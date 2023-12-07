@@ -7,6 +7,8 @@ import dash_html_components as html
 from dash.dependencies import Input, Output
 import logging
 import os
+import plotly.graph_objects as go
+
 
 # Create a logs directory if it doesn't exist
 log_dir = './logs'
