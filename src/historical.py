@@ -2,13 +2,11 @@ import pandas as pd
 from datetime import datetime, timedelta
 import yfinance as yf
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc, html
 from dash.dependencies import Input, Output
+import plotly.graph_objects as go
 import logging
 import os
-import plotly.graph_objects as go
-
 
 # Create a logs directory if it doesn't exist
 log_dir = './logs'
@@ -76,6 +74,9 @@ app.layout = html.Div([
     # Button for viewing top 5 table
     html.Button("View Top 5 Table", id="view-top5-table", n_clicks=0),
 
+    # Button for viewing all stocks' performance
+    html.Button("View All Stocks Performance", id="view-all-stocks-chart", n_clicks=0),
+
     # Output container
     html.Div(id='output-container'),
 
@@ -92,9 +93,10 @@ app.layout = html.Div([
      Output('performance-chart', 'figure'),
      Output('top5-table', 'figure')],
     [Input('view-main-chart', 'n_clicks'),
-     Input('view-top5-table', 'n_clicks')]
+     Input('view-top5-table', 'n_clicks'),
+     Input('view-all-stocks-chart', 'n_clicks')]
 )
-def update_page(main_chart_clicks, top5_table_clicks):
+def update_page(main_chart_clicks, top5_table_clicks, all_stocks_chart_clicks):
     ctx = dash.callback_context
     button_id = ctx.triggered_id if ctx.triggered_id else 'view-main-chart'
 
@@ -106,8 +108,14 @@ def update_page(main_chart_clicks, top5_table_clicks):
     elif button_id == 'view-top5-table':
         # Update the page for the top 5 table view
         output = "Top 5 Table View"
+        duration_column = '1 Month Performance'  # You can modify this to the selected duration
         main_chart_fig = None
-        top5_table_fig = create_top5_table(result_df, '1 Month Performance')
+        top5_table_fig = create_top5_table(result_df, duration_column)
+    elif button_id == 'view-all-stocks-chart':
+        # Update the page for viewing all stocks' performance
+        output = "All Stocks Performance View"
+        main_chart_fig = create_all_stocks_chart(result_df)
+        top5_table_fig = None
     else:
         # Initial page load
         output = ""
@@ -152,6 +160,28 @@ def create_top5_table(df, duration_column):
 
     return top5_table_fig
 
+def create_all_stocks_chart(df):
+    # Create a chart showing all stocks' performance over a selected period
+    fig = go.Figure()
+
+    # You can modify the duration_column to the selected duration
+    duration_column = '1 Month Performance'
+
+    fig.add_trace(go.Bar(
+        x=df['Symbol'],
+        y=df[duration_column],
+        hoverinfo='y+name',
+    ))
+
+    fig.update_layout(
+        title=f'All Stocks Performance - {duration_column}',
+        xaxis_title='Investment Symbol',
+        yaxis_title='Performance (%)',
+        showlegend=False,
+    )
+
+    return fig
+
 # Run the app
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=8051)
