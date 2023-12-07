@@ -1,11 +1,12 @@
 import pandas as pd
+from datetime import datetime, timedelta
 import yfinance as yf
-import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly.graph_objects as go
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output
 import logging
 import os
-from datetime import datetime, timedelta
 
 # Create a logs directory if it doesn't exist
 log_dir = './logs'
@@ -27,12 +28,10 @@ def fetch_historical_performance(row):
     logging.info(f'🚀 Fetching data for {investment_name} ({symbol})...')
 
     try:
-        # Calculate the start and end dates
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-
         # Download historical data from Yahoo Finance
-        stock_data = yf.download(symbol, start=start_date, end=end_date)
+        startDate = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        endDate = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        stock_data = yf.download(symbol, start='2022-01-01', end='2023-01-01')
 
         # Calculate performances
         performances = {
@@ -62,91 +61,95 @@ def fetch_historical_performance(row):
 # Apply the function to each row of the symbol mapping DataFrame
 result_df = symbol_mapping.apply(fetch_historical_performance, axis=1)
 
-# Save the result to a new CSV file
-result_df.to_csv('./out/historical_performance_yahoo_finance.csv', index=False)
+# Create Dash app
+app = dash.Dash(__name__)
 
-# Create bar charts for each duration
-for duration in ['1 Month', '3 Month', '6 Month', '1 Year']:
-    # Create a bar chart
-    plt.figure(figsize=(12, 6))
-    plt.bar(result_df['Investment Name'], result_df[f'{duration} Performance'], color='skyblue')
-    plt.title(f'{duration} Performance of Investment Options 📊')
-    plt.xlabel('Investment Name 🏦')
-    plt.ylabel('Performance 💹')
-    plt.xticks(rotation=45, ha='right')
-    plt.tight_layout()
+# Define layout
+app.layout = html.Div([
+    html.H1("Investment Performance Dashboard"),
+    
+    # Button for viewing the main chart
+    html.Button("View Main Chart", id="view-main-chart", n_clicks=0),
+    
+    # Button for viewing top 5 table
+    html.Button("View Top 5 Table", id="view-top5-table", n_clicks=0),
 
-    # Add top 5 table
-    top5_table = result_df.sort_values(by=f'{duration} Performance', ascending=False).head(5)
-    plt.table(cellText=top5_table[[f'{duration} Performance']].values,
-              rowLabels=top5_table['Investment Name'],
-              colLabels=[f'Top 5 in {duration}'],
-              loc='bottom', cellLoc='center', colLoc='center', bbox=[0, -0.2, 1, 0.15])
+    # Output container
+    html.Div(id='output-container'),
 
-    plt.savefig(f'./out/performance_chart_{duration.lower()}_yahoo_finance.png')
-    plt.close()
+    # Graph component for displaying performance data
+    dcc.Graph(id='performance-chart'),
 
-# Create a bar chart for each stock's performance over 1, 3, 6, and 12 months
-fig = go.Figure()
+    # Table component for displaying top 5 investments
+    dcc.Graph(id='top5-table'),
+])
 
-for duration in ['1 Month', '3 Month', '6 Month', '1 Year']:
-    result_df_sorted = result_df.sort_values(by=f'{duration} Performance', ascending=True)
-    rounded_performance = result_df_sorted[f'{duration} Performance'].round(5)
+# Define callback for button clicks
+@app.callback(
+    [Output('output-container', 'children'),
+     Output('performance-chart', 'figure'),
+     Output('top5-table', 'figure')],
+    [Input('view-main-chart', 'n_clicks'),
+     Input('view-top5-table', 'n_clicks')]
+)
+def update_page(main_chart_clicks, top5_table_clicks):
+    ctx = dash.callback_context
+    button_id = ctx.triggered_id if ctx.triggered_id else 'view-main-chart'
 
-    # Create a bar trace for each duration
-    trace = go.Bar(
-        x=result_df_sorted['Symbol'],
-        y=rounded_performance,
-        text=result_df_sorted['Investment Name'],
-        hoverinfo='text+y',
-        name=f'{duration} Performance'
+    if button_id == 'view-main-chart':
+        # Update the page for the main chart view
+        output = "Main Chart View"
+        main_chart_fig = create_main_chart(result_df)
+        top5_table_fig = None
+    elif button_id == 'view-top5-table':
+        # Update the page for the top 5 table view
+        output = "Top 5 Table View"
+        main_chart_fig = None
+        top5_table_fig = create_top5_table(result_df, '1 Month Performance')
+    else:
+        # Initial page load
+        output = ""
+        main_chart_fig = None
+        top5_table_fig = None
+
+    return output, main_chart_fig, top5_table_fig
+
+def create_main_chart(df):
+    # Create a combined chart showing all 1, 3, 6, 12 month performances
+    fig = go.Figure()
+
+    for duration in ['1 Month', '3 Month', '6 Month', '1 Year']:
+        fig.add_trace(go.Bar(
+            x=df['Symbol'],
+            y=df[f'{duration} Performance'],
+            name=f'{duration} Performance',
+            hoverinfo='y+name',
+        ))
+
+    fig.update_layout(
+        barmode='group',
+        title='Investment Performance Over Time',
+        xaxis_title='Investment Symbol',
+        yaxis_title='Performance (%)',
+        showlegend=True,
     )
-    fig.add_trace(trace)
 
-# Configure the layout
-fig.update_layout(
-    barmode='group',
-    title='Stock Performance Over Time',
-    xaxis_title='Stock Symbol',
-    yaxis_title='Performance',
-    showlegend=True
-)
+    return fig
 
-# Add click event handler to display selected stock's performance near the legend
-fig.update_layout(
-    updatemenus=[
-        {
-            'type': 'buttons',
-            'showactive': False,
-            'buttons': [
-                {
-                    'label': '1 Month',
-                    'method': 'update',
-                    'args': [{'visible': [True, False, False, False]}, {'title': '1 Month Performance'}]
-                },
-                {
-                    'label': '3 Month',
-                    'method': 'update',
-                    'args': [{'visible': [False, True, False, False]}, {'title': '3 Month Performance'}]
-                },
-                {
-                    'label': '6 Month',
-                    'method': 'update',
-                    'args': [{'visible': [False, False, True, False]}, {'title': '6 Month Performance'}]
-                },
-                {
-                    'label': '1 Year',
-                    'method': 'update',
-                    'args': [{'visible': [False, False, False, True]}, {'title': '1 Year Performance'}]
-                },
-            ],
-        },
-    ]
-)
+def create_top5_table(df, duration_column):
+    # Create a visual table for the top 5 investments
+    top5_table = df.sort_values(by=duration_column, ascending=False).head(5)
+    top5_table_fig = go.Figure(data=[go.Table(
+        header=dict(values=['Investment Name', 'Symbol', f'{duration_column}']),
+        cells=dict(values=[top5_table['Investment Name'], top5_table['Symbol'], top5_table[duration_column]]),
+    )])
 
-# Save the chart as an HTML file
-chart_file_path = './out/stock_performance_over_time.html'
-fig.write_html(chart_file_path)
+    top5_table_fig.update_layout(
+        title=f'Top 5 Investments - {duration_column}',
+    )
 
-# Display the chart
-fig.show()
+    return top5_table_fig
+
+# Run the app
+if __name__ == '__main__':
+    app.run_server(debug=True)
