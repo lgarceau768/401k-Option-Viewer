@@ -28,8 +28,8 @@ def fetch_historical_performance(row):
 
     try:
         # Calculate the start and end dates
-        end_date = (datetime.now().strftime('%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=366)).strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
 
         # Download historical data from Yahoo Finance
         stock_data = yf.download(symbol, start=start_date, end=end_date)
@@ -75,6 +75,14 @@ for duration in ['1 Month', '3 Month', '6 Month', '1 Year']:
     plt.ylabel('Performance 💹')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
+
+    # Add top 5 table
+    top5_table = result_df.sort_values(by=f'{duration} Performance', ascending=False).head(5)
+    plt.table(cellText=top5_table[[f'{duration} Performance']].values,
+              rowLabels=top5_table['Investment Name'],
+              colLabels=[f'Top 5 in {duration}'],
+              loc='bottom', cellLoc='center', colLoc='center', bbox=[0, -0.2, 1, 0.15])
+
     plt.savefig(f'./out/performance_chart_{duration.lower()}_yahoo_finance.png')
     plt.close()
 
@@ -102,6 +110,38 @@ fig.update_layout(
     xaxis_title='Stock Symbol',
     yaxis_title='Performance',
     showlegend=True
+)
+
+# Add click event handler to display selected stock's performance near the legend
+fig.update_layout(
+    updatemenus=[
+        {
+            'type': 'buttons',
+            'showactive': False,
+            'buttons': [
+                {
+                    'label': '1 Month',
+                    'method': 'update',
+                    'args': [{'visible': [True, False, False, False]}, {'title': '1 Month Performance'}]
+                },
+                {
+                    'label': '3 Month',
+                    'method': 'update',
+                    'args': [{'visible': [False, True, False, False]}, {'title': '3 Month Performance'}]
+                },
+                {
+                    'label': '6 Month',
+                    'method': 'update',
+                    'args': [{'visible': [False, False, True, False]}, {'title': '6 Month Performance'}]
+                },
+                {
+                    'label': '1 Year',
+                    'method': 'update',
+                    'args': [{'visible': [False, False, False, True]}, {'title': '1 Year Performance'}]
+                },
+            ],
+        },
+    ]
 )
 
 # Save the chart as an HTML file

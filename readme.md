@@ -1,32 +1,50 @@
 # Retirement Options Viewer
 Author: Luke Garceau
-Date: 2023-12-07
-This project fetches historical performance data for investment options using the Yahoo Finance API.
+This project fetches historical performance data for different investment options using the Yahoo Finance API and visualizes the data through interactive charts. The performance is measured over 1 month, 3 months, 6 months, and 1 year periods.
 
-## Usage
+## Getting Started
 
-1. Install dependencies:
+### Prerequisites
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+- Python 3.6 or higher
+- Install required Python packages using the provided `requirements.txt` file.
 
-2. Run the script:
+```bash
+pip install -r requirements.txt
+```
 
-    ```bash
-    python3 src/historical.py
-    ```
+### Usage
 
-## Outputs
+Run the script to fetch historical performance data and generate visualizations:
 
-- Historical performance data: [historical_performance_alpha_vantage.csv](./output/historical_performance_alpha_vantage.csv)
-- Performance charts:
-  - [1 Month Performance Chart](./output/performance_chart_1_month.png)
-  - [3 Month Performance Chart](./output/performance_chart_3_month.png)
-  - [6 Month Performance Chart](./output/performance_chart_6_month.png)
-  - [1 Year Performance Chart](./output/performance_chart_1_year.png)
-- Top 5 Investments for 1 Month Performance: [top5_investments.md](./output/top5_investments.md)
-- [Log directory](./output/)
+```bash
+python3 scr/historical.py
+```
 
-### Requirements.txt
+## Directory Structure
 
+```
+.
+├── data
+│   └── symbol_mapping.csv
+├── logs
+│   └── historical_performance.log
+├── out
+│   ├── historical_performance_yahoo_finance.csv
+│   ├── performance_chart_1_month_yahoo_finance.png
+│   ├── performance_chart_3_month_yahoo_finance.png
+│   ├── performance_chart_6_month_yahoo_finance.png
+│   ├── performance_chart_1_year_yahoo_finance.png
+│   ├── stock_performance_over_time.html
+│   └── top5_table_{duration}_yahoo_finance.html
+├── script.py
+└── requirements.txt
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## Acknowledgments
+
+- [Yahoo Finance API](https://rapidapi.com/apidojo/api/yahoo-finance1)
